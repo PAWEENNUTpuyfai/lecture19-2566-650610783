@@ -26,19 +26,31 @@ export default function Home() {
   const [myCourses, setMyCourses] = useState(null);
 
   const loadCourses = async () => {
-    const resp = await axios.get("");
+    setLoadingCourses(true);
+    const resp = await axios.get("/api/course");
+    setCourses(resp.data.courses);
+    setLoadingCourses(false);
   };
 
   const loadMyCourses = async () => {
+    setLoadingCourses(true);
     const resp = await axios.get("/api/enrollment", {
-      // headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     setMyCourses(resp.data.courses);
+    setLoadingCourses(false);
   };
 
   //load courses when app started
   useEffect(() => {
     loadCourses();
+
+    const token = localStorage.getItem("token");
+    const username = localStorage.getItem("username");
+    if (token && username) {
+      setToken(token);
+      setAuthenUsername(username);
+    }
   }, []);
 
   //load my courses when logged in
@@ -50,12 +62,14 @@ export default function Home() {
 
   const login = async () => {
     try {
-      const resp = await axios.post("/api/user/login");
+      const resp = await axios.post("/api/user/login", { username, password });
       //set token and authenUsername here
-      // setToken();
-      // setAuthenUsername();
-      // setUsername("");
-      // setPassword("");
+      setToken(resp.data.token);
+      setAuthenUsername(resp.data.username);
+      setUsername("");
+      setPassword("");
+      localStorage.setItem("token", resp.data.token);
+      localStorage.setItem("username", resp.data.username);
     } catch (error) {
       //show error message from API
       if (error.response.data) {
@@ -69,6 +83,11 @@ export default function Home() {
 
   const logout = () => {
     //set stuffs to null
+    setAuthenUsername(null);
+    setToken(null);
+    setMyCourses(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("usename");
   };
 
   return (
@@ -80,7 +99,8 @@ export default function Home() {
         {/* all courses section */}
         <Paper withBorder p="md">
           <Title order={4}>All courses</Title>
-          {/* <Loader variant="dots" /> */}
+          {loadingCourses && <Loader variant="dots" />}
+
           {courses &&
             courses.map((course) => (
               <Text key={course.courseNo}>
@@ -94,34 +114,39 @@ export default function Home() {
           <Title order={4}>Login</Title>
 
           {/* show this if not logged in yet */}
-          <Group align="flex-end">
-            <TextInput
-              label="Username"
-              onChange={(e) => setUsername(e.target.value)}
-              value={username}
-            />
-            <TextInput
-              label="Password"
-              onChange={(e) => setPassword(e.target.value)}
-              value={password}
-            />
-            <Button onClick={login}>Login</Button>
-          </Group>
-
+          {!authenUsername && (
+            <Group align="flex-end">
+              <TextInput
+                label="Username"
+                onChange={(e) => setUsername(e.target.value)}
+                value={username}
+              />
+              <TextInput
+                label="Password"
+                onChange={(e) => setPassword(e.target.value)}
+                value={password}
+              />
+              <Button onClick={login}>Login</Button>
+            </Group>
+          )}
           {/* show this if logged in already */}
-          {/* <Group>
+          {authenUsername && (
+            <Group>
               <Text fw="bold">Hi {authenUsername}!</Text>
               <Button color="red" onClick={logout}>
                 Logout
               </Button>
-            </Group> */}
+            </Group>
+          )}
         </Paper>
 
         {/* enrollment section */}
         <Paper withBorder p="md">
           <Title order={4}>My courses</Title>
-          <Text color="dimmed">Please login to see your course(s)</Text>
 
+          {!authenUsername && (
+            <Text color="dimmed">Please login to see your course(s)</Text>
+          )}
           {myCourses &&
             myCourses.map((course) => (
               <Text key={course.courseNo}>
